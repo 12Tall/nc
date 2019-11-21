@@ -1,10 +1,12 @@
+﻿
+
 #include <node.h>
 #include <v8.h>
 #include <Windows.h>
 #include <winuser.h>
+#include <string>
 
 using namespace v8;
-
 
 void SendUnicode(wchar_t data)
 {
@@ -24,12 +26,11 @@ void SendUnicode(wchar_t data)
     SendInput(2, input, sizeof(INPUT));
 }
 
-
-
 static void MoveMouse(const FunctionCallbackInfo<Value> &args)
 {
+    setlocale(LC_ALL, "");
     Isolate *isolate = args.GetIsolate();
-    SendUnicode(L'\u4e8c');
+    SendUnicode(L'二.');
     args.GetReturnValue().SetUndefined();
 }
 
