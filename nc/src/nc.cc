@@ -1,16 +1,35 @@
 #include <node.h>
 #include <v8.h>
-#include <windows.h>
+#include <Windows.h>
+#include <winuser.h>
 
 using namespace v8;
+
+
+void SendUnicode(wchar_t data)
+{
+    INPUT input[2];
+    memset(input, 0, 2 * sizeof(INPUT));
+
+    input[0].type = INPUT_KEYBOARD;
+    input[0].ki.wVk = 0;
+    input[0].ki.wScan = data;
+    input[0].ki.dwFlags = 0x4; //KEYEVENTF_UNICODE;
+
+    input[1].type = INPUT_KEYBOARD;
+    input[1].ki.wVk = 0;
+    input[1].ki.wScan = data;
+    input[1].ki.dwFlags = KEYEVENTF_KEYUP | 0x4; //KEYEVENTF_UNICODE;
+
+    SendInput(2, input, sizeof(INPUT));
+}
+
+
 
 static void MoveMouse(const FunctionCallbackInfo<Value> &args)
 {
     Isolate *isolate = args.GetIsolate();
-    mouse_event(MOUSEEVENTF_LEFTDOWN, 100, 100, 0, 0);
-    mouse_event(MOUSEEVENTF_LEFTDOWN, 100, 100, 0, 0);
-    // SetCursorPos(100, 100);
-    mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+    SendUnicode(L'\u4e8c');
     args.GetReturnValue().SetUndefined();
 }
 
