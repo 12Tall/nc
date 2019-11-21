@@ -1,2 +1,2 @@
 const nc = require("../build/Release/nc");
-nc.moveMouse();
+nc.moveMouse("我是12tall");

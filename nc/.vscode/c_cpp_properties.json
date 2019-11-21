@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\Users\\You_N\\.node-gyp\\10.16.3\\include\\**",
+                "C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.17763.0\\ucrt\\**",
+                "C:\\Program Files (x86)\\Microsoft SDKs\\Windows\\v7.1A\\Include\\**",
+                "ode"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "intelliSenseMode": "msvc-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "compilerPath": "D:\\dev\\vs_build_tool\\MSBuild\\15.0\\Bin"
+        }
+    ],
+    "version": 4
+}
