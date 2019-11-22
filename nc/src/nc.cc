@@ -9,46 +9,38 @@
 using namespace v8;
 using namespace std;
 
-void SendAscii(wchar_t data, BOOL shift)
+// 关闭调试时优化
+#pragma optimize("", off)
+void SendAscii(wchar_t data)
 {
+    short vk = VkKeyScan(data);
+
     INPUT input[2];
     memset(input, 0, 2 * sizeof(INPUT));
-
-    if (shift)
-    {
-        input[0].type = INPUT_KEYBOARD;
-        input[0].ki.wVk = VK_SHIFT;
-        SendInput(1, input, sizeof(INPUT));
-    }
-
+    char i = vk & 0xff;
     input[0].type = INPUT_KEYBOARD;
-    input[0].ki.wVk = data;
+    input[0].ki.wVk = i;
 
     input[1].type = INPUT_KEYBOARD;
-    input[1].ki.wVk = data;
+    input[1].ki.wVk = i;
     input[1].ki.dwFlags = KEYEVENTF_KEYUP;
 
     SendInput(2, input, sizeof(INPUT));
-
-    if (shift)
-    {
-        input[0].type = INPUT_KEYBOARD;
-        input[0].ki.wVk = VK_SHIFT;
-        input[0].ki.dwFlags = KEYEVENTF_KEYUP;
-        SendInput(1, input, sizeof(INPUT));
-    }
 }
+#pragma optimize("", on)
 
 void SendUnicode(wchar_t data)
 {
     INPUT input[2];
     memset(input, 0, 2 * sizeof(INPUT));
 
+    // 按键按下
     input[0].type = INPUT_KEYBOARD;
     input[0].ki.wVk = 0;
     input[0].ki.wScan = data;
     input[0].ki.dwFlags = 0x4; //KEYEVENTF_UNICODE;
 
+    // 按键弹起
     input[1].type = INPUT_KEYBOARD;
     input[1].ki.wVk = 0;
     input[1].ki.wScan = data;
@@ -79,13 +71,13 @@ static void typeUnicode(const FunctionCallbackInfo<Value> &args)
         MultiByteToWideChar(CP_UTF8, 0, cc.c_str(), -1, pwszUnicode, iSize);
         for (int i = 0; i < iSize - 1; i++)
         {
-            if (*pwszUnicode > 255)
+            if (*pwszUnicode < 256)
             {
-                SendUnicode(*pwszUnicode++);
+                SendAscii(*pwszUnicode++);
             }
             else
             {
-                SendAscii(*pwszUnicode++, false);
+                SendUnicode(*pwszUnicode++);
             }
         }
         // 不要忘记恢复指针
