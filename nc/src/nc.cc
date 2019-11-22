@@ -79,7 +79,14 @@ static void typeUnicode(const FunctionCallbackInfo<Value> &args)
         MultiByteToWideChar(CP_UTF8, 0, cc.c_str(), -1, pwszUnicode, iSize);
         for (int i = 0; i < iSize - 1; i++)
         {
-            SendUnicode(*pwszUnicode++);
+            if (*pwszUnicode > 255)
+            {
+                SendUnicode(*pwszUnicode++);
+            }
+            else
+            {
+                SendAscii(*pwszUnicode++, false);
+            }
         }
         // 不要忘记恢复指针
         pwszUnicode -= (iSize - 1);
