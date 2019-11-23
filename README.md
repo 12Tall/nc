@@ -16,3 +16,7 @@
 ```log
 error C4430: 缺少类型说明符 - 假定为 int。注意: C++ 不支持默认 int
 ```
+
+## [2. 知识点](https://nodeaddons.com/)  
+
+### [2.1 Node.js 和C++ 间的类型转换](https://fed.taobao.org/blog/2016/09/21/type-casts-between-node-and-cpp/)  
