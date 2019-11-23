@@ -1,15 +1,24 @@
 {
   "name": "nc_keyboard",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Win下模拟键盘操作",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "install": "node-gyp rebuild"
   },
   "keywords": [
     "keyboard",
     "windows"
   ],
   "author": "12tall",
-  "license": "MIT"
+  "license": "MIT",
+  "gypfile": true,
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "child_process": "^1.0.2",
+    "node-cmd": "^3.0.0"
+  }
 }
