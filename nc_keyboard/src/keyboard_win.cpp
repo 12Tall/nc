@@ -8,6 +8,27 @@
 using namespace v8;
 using namespace std;
 
+void KeyDown(WORD vKey)
+{
+    INPUT input;
+    memset(&input, 0, sizeof(INPUT));
+    input.type = INPUT_KEYBOARD;
+    input.ki.wVk = vKey;
+
+    SendInput(1, &input, sizeof(INPUT));
+}
+void KeyUp(WORD vKey)
+{
+    INPUT input;
+    memset(&input, 0, sizeof(INPUT));
+
+    input.type = INPUT_KEYBOARD;
+    input.ki.wVk = vKey;
+    input.ki.dwFlags = KEYEVENTF_KEYUP;
+
+    SendInput(1, &input, sizeof(INPUT));
+}
+
 void SendKey(WORD vKey)
 {
     INPUT input[2];

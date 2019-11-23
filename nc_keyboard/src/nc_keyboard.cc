@@ -8,6 +8,7 @@
 using namespace v8;
 using namespace std;
 
+// 模拟连续按键
 static void typeVirtualKey(const FunctionCallbackInfo<Value> &args)
 {
     int len = args.Length();
@@ -25,6 +26,36 @@ static void typeVirtualKey(const FunctionCallbackInfo<Value> &args)
     args.GetReturnValue().SetUndefined();
 }
 
+// 模拟按下
+static void keyDown(const FunctionCallbackInfo<Value> &args)
+{
+    int len = args.Length();
+    Isolate *isolate = args.GetIsolate();
+    if (args[0]->IsNumber())
+    {
+        Local<Number> num = Local<Number>::Cast(args[0]);
+        WORD keyCode = num->Int32Value() & 0xff;
+        KeyDown(keyCode);
+    }
+
+    args.GetReturnValue().SetUndefined();
+}
+
+// 模拟弹起
+static void keyUp(const FunctionCallbackInfo<Value> &args)
+{
+    int len = args.Length();
+    Isolate *isolate = args.GetIsolate();
+    if (args[0]->IsNumber())
+    {
+        Local<Number> num = Local<Number>::Cast(args[0]);
+        WORD keyCode = num->Int32Value() & 0xff;
+        KeyUp(keyCode);
+    }
+
+    args.GetReturnValue().SetUndefined();
+}
+
 extern "C" NODE_MODULE_EXPORT void
 
 NODE_MODULE_INITIALIZER(Local<Object> exports,
@@ -32,4 +63,6 @@ NODE_MODULE_INITIALIZER(Local<Object> exports,
                         Local<Context> context)
 {
     NODE_SET_METHOD(exports, "typeVirtualKey", typeVirtualKey);
+    NODE_SET_METHOD(exports, "keyDown", keyDown);
+    NODE_SET_METHOD(exports, "keyUp", keyUp);
 }

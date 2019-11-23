@@ -10,8 +10,10 @@
 using namespace v8;
 using namespace std;
 
+void KeyDown(WORD vKey);
+void KeyUp(WORD vKey);
 void SendKey(WORD vKey);
-void SendAscii(short vkKey);
+void SendAscii(char vkKey);
 void SendUnicode(wchar_t data);
 
 #endif
