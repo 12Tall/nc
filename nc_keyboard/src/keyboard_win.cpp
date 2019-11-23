@@ -67,3 +67,17 @@ void SendAscii(wchar_t ch)
         KeyUp(VK_SHIFT);
     }
 }
+void SendUnicode(wchar_t ch)
+{
+    INPUT input[2];
+    memset(input, 0, 2 * sizeof(INPUT));
+    input[0].type = INPUT_KEYBOARD;
+    input[0].ki.wScan = ch;
+    input[0].ki.dwFlags = KEYEVENTF_UNICODE;
+
+    input[1].type = INPUT_KEYBOARD;
+    input[1].ki.wScan = ch;
+    input[1].ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_UNICODE;
+
+    SendInput(2, input, sizeof(INPUT));
+}
