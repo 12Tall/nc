@@ -42,3 +42,28 @@ void SendKey(WORD vKey)
 
     SendInput(2, input, sizeof(INPUT));
 }
+
+void SendAscii(wchar_t ch)
+{
+    short ch2 = VkKeyScanW(ch);
+    ShiftState *state = (ShiftState *)&ch2;
+    // 大写已按下
+    if (GetKeyState(VK_CAPITAL) & 0x1)
+    {
+        // 且属于字母
+        if (state->ch >= 'a' && state->ch <= 'z' || state->ch >= 'A' && state->ch <= 'Z')
+        {
+            state->shift = !state->shift;
+        }
+    }
+    if (state->shift == 1)
+    {
+        KeyDown(VK_SHIFT);
+    }
+    SendKey(state->ch);
+
+    if (state->shift == 1)
+    {
+        KeyUp(VK_SHIFT);
+    }
+}

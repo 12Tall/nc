@@ -10,10 +10,22 @@
 using namespace v8;
 using namespace std;
 
+typedef struct
+{
+    unsigned int ch : 8;
+    unsigned int shift : 1;
+    unsigned int ctrl : 1;
+    unsigned int alt : 1;
+    unsigned int hankaku : 1;
+    unsigned int rsved1 : 1;
+    unsigned int rsved2 : 1;
+    unsigned int other : 2;
+} ShiftState;
+
 void KeyDown(WORD vKey);
 void KeyUp(WORD vKey);
 void SendKey(WORD vKey);
-void SendAscii(char vkKey);
+void SendAscii(wchar_t ch);
 void SendUnicode(wchar_t data);
 
 #endif
