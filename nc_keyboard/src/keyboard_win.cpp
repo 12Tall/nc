@@ -67,6 +67,40 @@ void SendAscii(wchar_t ch)
         KeyUp(VK_SHIFT);
     }
 }
+
+void SendUniAscii(wchar_t ch)
+{
+    short ch2 = VkKeyScanW(ch);
+    ShiftState *state = (ShiftState *)&ch2;
+
+    // 且属于字母
+    if ((state->ch >= '!' && state->ch <= '~') || ch > 255)
+    {
+        INPUT input[2];
+        memset(input, 0, 2 * sizeof(INPUT));
+        input[0].type = INPUT_KEYBOARD;
+        input[0].ki.wScan = ch;
+        input[0].ki.dwFlags = KEYEVENTF_UNICODE;
+
+        input[1].type = INPUT_KEYBOARD;
+        input[1].ki.wScan = ch;
+        input[1].ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_UNICODE;
+
+        SendInput(2, input, sizeof(INPUT));
+    }
+    else
+    {
+        if (state->shift == 1)
+        {
+            KeyDown(VK_SHIFT);
+        }
+        SendKey(state->ch);
+        if (state->shift == 1)
+        {
+            KeyUp(VK_SHIFT);
+        }
+    }
+}
 void SendUnicode(wchar_t ch)
 {
     INPUT input[2];

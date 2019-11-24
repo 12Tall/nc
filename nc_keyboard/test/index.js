@@ -1,8 +1,3 @@
-# 用法  
-
-1. 需要`node-gyp` 编译安装  
-
-```js
 const nc_keyboard = require("nc_keyboard")
 
 // 关于虚拟键盘码并未封装完全，具体需要百度或谷歌
@@ -22,5 +17,3 @@ nc_keyboard.typeUnicode("你好，世界！");
 // 新增混合输入Unicode和ASCII 的方法，
 // 以避免因输入法引起的大小写一场
 nc_keyboard.typeUniAscii("!!!我&￥$!!");
-
-```

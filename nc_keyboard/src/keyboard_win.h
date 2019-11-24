@@ -27,6 +27,7 @@ void KeyUp(WORD vKey);
 void SendKey(WORD vKey);
 void SendAscii(wchar_t ch);
 void SendUnicode(wchar_t data);
+void SendUniAscii(wchar_t data);
 
 #endif
 /**
