@@ -1,16 +1,5 @@
 # building
-*/build/
-*.sln
-*.lib
-*.*pdb
-*.*obj
-*.tlog
-*.lastbuildstate
-*.exp
-*.vcxproj*
-*.node
-*.map
-*.gypi
+build/
 
 # Logs
 logs
