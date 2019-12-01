@@ -75,3 +75,126 @@ NODE_MODULE(NODE_GYP_MODULE_NAME, Initialize)
 在`hello.cc`例子中，初始化函数时`Initialize`扩展模块名是`addon`。  
 当使用`node-gyp`构建扩展时，会通过使用宏`NODE_GYP_MODULE_NAME`作为`NODE_MODULE()`的第一个参数，来确保最终的二进制文件传递给`NODE_MODULE()`  
 *注：验证直接修改`NODE_GYP_MODULE_NAME`为字符串的操作并不能通过编译*  
+
+## 上下文感知插件  
+
+在某些环境中，可能需要在多个上下文中加载`Node.js`扩展。例如[Electron](https://electronjs.org/)会在运行时在一个进程中启动多个`Node.js`实例。每个实例都有自己的`require()`缓存，因此每个实例在`require()`加载时都需要一个本地扩展才能正确运行。从插件的角度来看，则必须支持被多次初始化。  
+
+
+上下文感知扩展可以通过`NODE_MODULE_INITIALIZER`宏来构建，该宏命令将函数名扩展为`Node.js`在加载扩展时查找的函数名。因此，扩展可以采用下面的方法进行初始化。  
+
+```c++
+// 代码片段
+using namespace v8;
+
+extern "C" NODE_MODULE_EXPORT void
+
+NODE_MODULE_INITIALIZER(Loacal<Object> exports,
+                        Local<Value> module,
+                        Local<COntext> context)
+{
+    /*初始化步骤*/
+}
+```  
+
+第二种选择是采用`NODE_MODULE_INIT()`宏来构建上下文感知扩展。与`NODE_MODULE()`不同的是`NODE_MODULE()`需要预先给定一个初始化函数，而`NODE_MODULE_INIT()`后跟函数体初党初始化的声明。  
+
+下面三个变量在`NODE_MODULE_INIT()`函数体中可能会用到：  
+
+- `Loacal<Object> exports`  
+- `Local<Value> module`  
+- `Local<COntext> context`  
+
+构建上下文感知插件，就要多注意管理全局静态数据。因为插件可能会在不同的线程中被加载许多次。插件中任何全局静态的数据都应该被可靠的保护。并且不要包含对JavaScript对象的持久引用。因为JavaScript对象只在一个上下文中有效，当上下文切换时可能会因为引用错误导致程序崩溃。  
+
+上下文感知插件可以通过下面步骤构建来规避全局静态数据：  
+
+- 定义一个类保存每个实例的数据。这个类包含一个`v8::Persistent<v8::Object>`对`expots`对象添加弱引用。与弱引用关联的回调函数将自动销毁该类的实例。  
+- 在插件初始化时构造此类的实例，以便将`v8::Persistent<v8::Object>`设置为`exports`对象。  
+- 保存此类的实例在`v8::External`，通过`v8::External`传递给`v8::FunctionTemplate`创建JavaScript原生函数的构造函数，并将其暴露给JavaScript的所有方法。`v8::FunctionTemplate` 构造函数接受的第三个参数为`v8::External`。  
+
+这将确保每个插件实例的数据能被JavaScript调用。每个插件实例的数据必须传递到插件可能创建的异步回调中。  
+下面例子展示了上下文感知插件的实现：  
+
+```c++
+/**
+ * 像是C++ 函数数据的持久化存储一样
+*/
+#include <node.h>
+
+using namespace v8;
+
+class AddonData
+{
+    // 构造函数
+public:
+    // 构造函数后跟冒号主要用于数据初始化：
+    // 1. 初始化const成员
+    // 2. 初始化引用成员
+    // 3. 调用父类构造函数
+    // 4. 调用成员类的构造函数
+    AddonData(Isolate *isolate, Local<Object> exports) : call_count(0)
+    {
+        // 将此实例与导出联系起来
+        exports_.Reset(isolate, exports);
+        exports_.SetWeak(this, DeleteMe, WeakCallbackType::kParameter);
+    }
+
+    ~AddonData()
+    {
+        if (!exports_.IsEmpty())
+        {
+            // 重置引用，以避免数据泄露
+            exports_.ClearWeak();
+            exports_.Reset();
+        }
+    }
+
+    // 实例数据
+    int call_count;
+
+private:
+    // 导出接口调用，垃圾回收方法
+    static void DeleteMe(const WeakCallbackInfo<AddonData> &info)
+    {
+        delete info.GetParameter();
+    }
+
+    // 声明持久化引用对象
+    v8::Persistent<v8::Object> exports_;
+}; // 类的声明后面要跟分号？
+
+static void Method(const v8::FunctionCallbackInfo<v8::Value> &info)
+{
+    // 检索每个加载项实例数据
+    AddonData *data =
+        // reinterpret_cast():重新解释比特位
+        reinterpret_cast<AddonData *>(info.Data().As<External>()->Value());
+    data->call_count++;
+    info.GetReturnValue().Set((double)data->call_count);
+}
+
+// 初始化上下文感知插件
+NODE_MODULE_INIT(/* exports, module, context */)
+{
+    Isolate *isolate = context->GetIsolate();
+
+    // 为上下文实例创建数据实例
+    AddonData *data = new AddonData(isolate, exports);
+    // 将数据封装在v8::External 以便我们可以将其传递给我们公开的方法。
+    Local<External> external = External::New(isolate, data);
+
+    // 暴露"Method"方法给JavaScript, 并将我们上面构建的v8::External 传递给FunctionTemplate
+    // 以确保JavaScript 能够收到数据
+    exports->Set(context, // 上下文
+                 String::NewFromUtf8(isolate, "method", NewStringType::kNormal)
+                     .ToLocalChecked(), // 方法名
+                 FunctionTemplate::New(isolate, Method, external)
+                     ->GetFunction(context)
+                     .ToLocalChecked()) // 数据
+        .FromJust();
+}
+```
+
+*注：插件的函数可能需要之前的状态，这样就需要在每个`Node.js`实例中，有一个全局变量保存之前的状态*  
+*但是又需要避免内存泄漏，所以才这么复杂吧*
