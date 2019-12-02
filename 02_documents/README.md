@@ -197,4 +197,139 @@ NODE_MODULE_INIT(/* exports, module, context */)
 ```
 
 *注：插件的函数可能需要之前的状态，这样就需要在每个`Node.js`实例中，有一个全局变量保存之前的状态*  
-*但是又需要避免内存泄漏，所以才这么复杂吧*
+*但是又需要避免内存泄漏，所以才这么复杂吧*  
+
+## Worker支持  
+为了可以被多个`Node.js`环境加载，例如一个主线程与工作线程，一个插件应该被定义为：  
+
+- `N-API` 插件  
+- 或者通过`NODE_MODULE_INIT()`声明为上下文感知插件  
+
+为了支持[工作线程](https://nodejs.org/api/worker_threads.html#worker_threads_class_worker)，插件需要通过`AddEnvironmentCleanupHook()`清除任何线程中可能会用到的资源。  
+
+```c++
+void AddEnvironmentCleanupHook( v8::Isolate* isolate,
+                                void (*fun)(void* arg),
+                                void* arg);
+```  
+
+下面是`addon.cc`使用`AddEnvironmentCleanupHook()`的实例：  
+
+```c++
+// 看不大懂。。。。
+// addon.cc
+#include <assert.h>
+#include <stdlib.h>
+#include <node.h>
+
+using node::AddEnvironmentCleanupHook;
+using v8::HandleScope;
+using v8::Isolate;
+using v8::Local;
+using v8::Object;
+
+// 在实际应用中，不要依赖静态/全局数据
+static char cookie[] = "yum yum";
+static int cleanup_cb1_called = 0;
+static int cleanup_cb2_called = 0;
+
+static void cleanup_cb1(void *arg)
+{
+    // 类似于reinterpret_cast
+    Isolate *isolate = static_cast<Isolate *>(arg);
+    HandleScope scope(isolate);
+    Local<Object> obj = Object::New(isolate);
+    assert(!obj.IsEmpty());
+    assert(obj->IsObject());
+    cleanup_cb1_called++;
+}
+
+static void cleanup_cb2(void *arg)
+{
+    assert(arg == static_cast<void *>(cookie));
+    cleanup_cb2_called++;
+}
+
+static void sanity_check(void *)
+{
+    assert(cleanup_cb1_called == 1);
+    assert(cleanup_cb2_called == 1);
+}
+
+NODE_MODULE_INIT()
+{
+    Isolate *isolate = context->GetIsolate();
+
+    AddEnvironmentCleanupHook(isolate, sanity_check, nullptr);
+    AddEnvironmentCleanupHook(isolate, cleanup_cb2, cookie);
+    AddEnvironmentCleanupHook(isolate, cleanup_cb1, isolate);
+}
+```  
+
+通过下列命令测试：  
+
+```javascript
+// test.js
+require('./build/Release/addon');
+```  
+
+## 构建  
+
+源码编写完成后，必须要编译成二进制文件`addon.node`。于是，我们需要创建一个`bionding.gyp`指导文件，在项目根目录下，指导文件采用类似于`JSON`的数据格式，可以被[node-gyp](https://github.com/nodejs/node-gyp)用于指导编译。  
+
+```json
+{
+  "targets": [  // 别漏掉s
+    {
+      "target_name": "addon",
+      "sources": [ "hello.cc" ]  // 别漏掉s
+    }
+  ]
+}
+```  
+
+`nod-gyp`的版本作为`npm`的一部分同`Node.js`绑定、分发。此版本不直接提供给开发者使用，仅用于支持`npm install`命令编译和安装插件。开发者可以使用`npm install -g node-gyp` 直接使用`node-gyp`。更多信息请参考[`node-gyp`安装指导](https://github.com/nodejs/node-gyp#installation)，也包括一些平台相关的信息。  
+
+一旦`binding.gyp`创建完成，就可以使用`node-gyp configure`来生成项目文件(build/目录下)：对于`*nix`会生成`makefile`；而对于Windows 会生成`vcxproj`文件。  
+随后，可以通过`node-gyp build`编译生成`addon.node`。一般会被生成在`build/Release/`目录下。  
+在使用`npm install`命令时，npm会使用绑定的`node-gyp`版本执行上面的步骤，来编译插件。编译成功后，Node.js就可以通过[require()](https://nodejs.org/api/modules.html#modules_require_id)加载二进制文件`*.node`。  
+
+```javascript
+// hello.js
+const addon = require('./build/Release/addon');
+
+console.log(addon.hello());
+// Prints: 'world'
+```
+
+因为目标文件的路径依赖于编译条件(可能会被编译成Debug版本)，插件可以使用[bindings](https://github.com/TooTallNate/node-bindings)包来加载编译模块。  
+
+`bindings`包的实现与`try...catch`类似：  
+
+```javascript
+try {
+  return require('./build/Release/addon.node');
+} catch (err) {
+  return require('./build/Debug/addon.node');
+}
+```  
+
+## 连接Node.js自身依赖项  
+
+Node.js使用静态链接库，例如：v8、libuv和OpenSSL。所有的插件都需要链接v8，有些还需要其他的依赖项。一般来说，就是用`#include<...>`就行了，`node-gyp`会自动定位到头文件。然而也有些坑需要注意下：  
+
+- 当`node-gyp`运行时会检测Node.js的发行版本并下载完整源码或者头文件。如果下载了完整源码，那插件将具有完整的Node.js依赖项访问权限；如果只下载了头文件，则只有Node.js导出的符号可用。  
+- 可以使用`--nodedir`来指定本地Node.js源映像。使用此项，插件将有权访问所有依赖项。  
+
+## 使用require()加载插件  
+
+插件的扩展名为`.node`(其实格式同dll或so)。`require()`方法就是查找`.node`文件并初始化这个动态链接库。  
+`reuqire()`在加载文件时如果不指定后缀名的话会优先查找加载`.js`而不是`.node`。  
+
+## Node.js的本地抽象  
+
+本文中的示例均直接采用`Node.js`和v8 api来实现插件。v8的api可能会随着v8引擎的版本更新。Node.js的版本尽量减少更新的频率，却难以保证v8 api的稳定性。  
+
+`nana`([Node.js本地抽象](https://github.com/nodejs/nan))提供了一系列工具来保证插件的兼容性。查看`nana`[示例](https://github.com/nodejs/nan/tree/master/examples/)  
+
+
