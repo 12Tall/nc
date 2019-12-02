@@ -332,4 +332,61 @@ Node.js使用静态链接库，例如：v8、libuv和OpenSSL。所有的插件�
 
 `nana`([Node.js本地抽象](https://github.com/nodejs/nan))提供了一系列工具来保证插件的兼容性。查看`nana`[示例](https://github.com/nodejs/nan/tree/master/examples/)  
 
+-----  
 
+## N-API  
+
+N-API是构建本地插件的接口，独立于JavaScript运行环境，并且是作为Node.js的一部分维护。应用程序二进制接口(ABI)是跨Node.js版本稳定的。允许新版本调用旧版本插件时不需要重新编译。本文中的编译工具也是`node-gyp`。唯一不同的就是API。  
+
+ABI的稳定性会对创建和维护N-API插件带来好处，[注意事项](https://nodejs.org/api/n-api.html#n_api_implications_of_abi_stability)  
+
+用N-API实现上面的HelloWorld示例：  
+
+```c++
+#include <node_api.h>
+
+namespace demo
+{
+napi_value Method(napi_env env, napi_callback_info args)
+{
+    napi_value greeting;
+    napi_status status;
+
+    status = napi_create_string_utf8(env,     // 环境
+                                     "world", // 值
+                                     NAPI_AUTO_LENGTH,
+                                     &greeting);
+    if (status != napi_ok)
+    {
+        return nullptr;
+    }
+    return greeting;
+}
+
+napi_value init(napi_env env, napi_value exports)
+{
+    napi_status status;
+    napi_value fn;
+
+    // 从函数创建函数
+    status = napi_create_function(env, nullptr, 0, Method, nullptr, &fn);
+    if (status != napi_ok)
+    {
+        return nullptr;
+    }
+    // 将函数绑定到属性
+    status = napi_set_named_property(env, exports, "hello", fn);
+    if (status != napi_ok)
+    {
+        return nullptr;
+    }
+
+    return exports;
+}
+
+NAPI_MODULE(NODE_GYP_MODULE_NAME, init)
+
+} // namespace demo
+```  
+
+如何使用参考文档[通过N-API构建插件](https://nodejs.org/api/n-api.html)  
