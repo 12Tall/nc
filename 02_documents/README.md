@@ -334,7 +334,7 @@ Node.js使用静态链接库，例如：v8、libuv和OpenSSL。所有的插件�
 
 -----  
 
-## N-API  
+## [N-API](napi.md)  
 
 N-API是构建本地插件的接口，独立于JavaScript运行环境，并且是作为Node.js的一部分维护。应用程序二进制接口(ABI)是跨Node.js版本稳定的。允许新版本调用旧版本插件时不需要重新编译。本文中的编译工具也是`node-gyp`。唯一不同的就是API。  
 
@@ -390,3 +390,5 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, init)
 ```  
 
 如何使用参考文档[通过N-API构建插件](https://nodejs.org/api/n-api.html)  
+
+## [示例](example.md)  
